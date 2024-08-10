@@ -2,6 +2,10 @@
 
 This repository contain code to run simulations contained in the preprint: Nic Ezzell, Lev Barash, Itay Hen, Exact and universal quantum Monte Carlo estimators for energy susceptibility and fidelity susceptibility (2024). 
 
+Link to asssociated code Zenodo (like this repo but fixed in time as when published, i.e., no commits): <a href="https://zenodo.org/records/13251139">https://zenodo.org/records/13251139</a>
+
+Link to associated data/plotting Zenodo: <a href="https://zenodo.org/records/13251202">https://zenodo.org/records/13251202</a>
+
 -----------------------------------------------------------------------------------------------------------
 # Attribution
 Most of the simulation code was (privately) forked from <a href="https://github.com/LevBarash/PMRQMC">PMRQMC</a>, as developed in: Lev Barash, Arman Babakhani, Itay Hen, A quantum Monte Carlo algorithm for arbitrary spin-1/2 Hamiltonians, Physical Review Research 6, 013281 (2024).
