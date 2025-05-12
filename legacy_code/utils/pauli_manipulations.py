@@ -1,9 +1,9 @@
 """
-This code was written in support of the experiments carried out in:
-* Nic Ezzell, Lev Barash, Itay Hen, Exact and universal quantum Monte Carlo estimators for energy susceptibility and fidelity susceptibility, arXiv:2408.03924 (2024).
-* Nic Ezzell and Itay Hen, Advanced measurement techniques in quantum Monte Carlo: The permutation matrix representation approach, arXiv:2504.07295 (2025).
-
-Description: Used to build and manipulate Paulis and Hamiltonians/Unitaries build as linear combinations of them. Supports conjugating a Hamiltonian with a Unitary build here.
+//
+// This program contains code generate and apply the "special random unitaries" described in Appendix A of:
+// Nic Ezzell, Lev Barash, Itay Hen, Exact and universal quantum Monte Carlo estimators for energy susceptibility and fidelity susceptibility.
+//
+//
 """
 # %%
 import numpy as np
@@ -34,20 +34,6 @@ class PauliTerm:
         sup_check = (self.supp == other.supp)
         op_check = (self.ops == other.ops)
         return n_check and c_check and sup_check and op_check
-
-    def make_random(self, k):
-        """ 
-        Changes Pauli to random Pauli string 
-        that is [k]-local.
-        """
-        # randomly choose a support over [k] qubits
-        supp = np.sort(np.random.choice(np.arange(1, self.n + 1), k, replace=False))
-        self.supp = tuple(supp)
-        # pick non-I ops for support qubits
-        ops = np.random.choice(['X', 'Y', 'Z'], k)
-        self.ops = tuple(ops)
-
-        return 
 
     def to_pmr_line(self):
         parts = [f"{self.c:.6f}"]

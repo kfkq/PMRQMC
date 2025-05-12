@@ -1,9 +1,9 @@
 """
-This code was written in support of the experiments carried out in:
-* Nic Ezzell, Lev Barash, Itay Hen, Exact and universal quantum Monte Carlo estimators for energy susceptibility and fidelity susceptibility, arXiv:2408.03924 (2024).
-* Nic Ezzell and Itay Hen, Advanced measurement techniques in quantum Monte Carlo: The permutation matrix representation approach, arXiv:2504.07295 (2025).
-
-Description: Contains unit tests for `pauli_manipulations.py'
+//
+// This program contains unit tests for the pauli_manipulations.py file to support code used in:
+// Nic Ezzell, Lev Barash, Itay Hen, Exact and universal quantum Monte Carlo estimators for energy susceptibility and fidelity susceptibility.
+//
+//
 """
 # %%
 import unittest
