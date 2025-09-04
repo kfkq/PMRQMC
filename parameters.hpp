@@ -1,33 +1,32 @@
 
 //
+// This program implements Permutation Matrix Representation Quantum Monte Carlo for arbitrary spin-1/2 Hamiltonians.
+//
 // This program is introduced in the paper:
-// Lev Barash, Arman Babakhani, Itay Hen, A quantum Monte Carlo algorithm for arbitrary spin-1/2 Hamiltonians (2023).
+// Lev Barash, Arman Babakhani, Itay Hen, A quantum Monte Carlo algorithm for arbitrary spin-1/2 Hamiltonians, Physical Review Research 6, 013281 (2024).
+//
+// Various advanced measurement capabilities were added as part of the
+// work introduced in the papers:
+// * Nic Ezzell, Lev Barash, Itay Hen, Exact and universal quantum Monte Carlo estimators for energy susceptibility and fidelity susceptibility, arXiv:2408.03924 (2024).
+// * Nic Ezzell and Itay Hen, Advanced measurement techniques in quantum Monte Carlo: The permutation matrix representation approach, arXiv:2504.07295 (2025).
 //
 // This program is licensed under a Creative Commons Attribution 4.0 International License:
 // http://creativecommons.org/licenses/by/4.0/
 //
+// ExExFloat datatype and calculation of divided differences are described in the paper:
+// L. Gupta, L. Barash, I. Hen, Calculating the divided differences of the exponential function by addition and removal of inputs, Computer Physics Communications 254, 107385 (2020)
+//
 
 //
-// Below are parameter values used for a simple speedy test (not good for real simulations)
-//
-#define Tsteps 1  // number of Monte-Carlo initial equilibration updates
-#define steps 2500  // number of Monte-Carlo updates
-#define stepsPerMeasurement 10 // number of Monte-Carlo updates per measurement
-#define beta 0.1 // inverse temperature
-#define tau 0.05 //imaginary propogation time
-
-//
-// Below are reasonable parameter values (commented out for speed)
+// Below are the parameter values:
 //
     
-//#define Tsteps 1000000  // number of Monte-Carlo initial equilibration updates
-//#define steps 10000000  // number of Monte-Carlo updates
-//#define stepsPerMeasurement 10 // number of Monte-Carlo updates per measurement
-//#define beta 1.0 // inverse temperature
-//#define tau 0.5 //imaginary propogation time
-
-
-#define parity_cond 0 // controls parity subspace measurement (leave at 0 unless advanced TFIM useage requires +/- 1)
+#define Tsteps 1000 // number of Monte-Carlo initial equilibration updates
+#define steps 10000 // number of Monte-Carlo updates
+#define stepsPerMeasurement 1 // number of Monte-Carlo updates per measurement
+#define beta 0.1 // inverse temperature
+#define tau 0.05 //imaginary propogation time
+#define parity_cond 0 // controls parity subspace measurement 
 
 //
 // Below is the list of standard observables:
@@ -63,7 +62,3 @@
 //
 // Uncomment or comment the macros below to enable or disable the ability to checkpoint and restart
 //
-// #define SAVE_COMPLETED_CALCULATION   // save detailed data to "qmc_data_*.dat" when calculaiton is completed
-// #define SAVE_UNFINISHED_CALCULATION  // save calculation state to the files "qmc_data_*.dat" prior to exiting when SIGTERM signal is detected
-// #define RESUME_CALCULATION           // attempt to read data from "qmc_data_*.dat" to resume the previous calculation
-// #define HURRY_ON_SIGTERM             // break composite update on SIGTERM signal to speed up saving data; this is usually not necessary
