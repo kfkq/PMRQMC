@@ -1,47 +1,119 @@
-# PMRQMC Project Information
+# PMRQMC Codebase Guide
 
 ## Build Commands
-- **C++ single-threaded build**: `g++ -O3 -std=c++11 -o PMRQMC.bin PMRQMC.cpp`
-- **C++ MPI build**: `mpicxx -O3 -std=c++11 -o PMRQMC_mpi.bin PMRQMC_mpi.cpp`
-- **Prepare data**: `g++ -O3 -std=c++11 -o prepare.bin prepare.cpp`
-- **Quick test run**: `./test_run.sh`
-- **Python experiment drivers**:
-  - `python experiments/tfim_driver.py`
-  - `python experiments/xxz_driver.py`
+```bash
+# Main project build (CMake)
+mkdir build && cd build
+cmake ..
+make
+
+# Quick test build and run (legacy)
+cd legacy
+g++ -O3 -std=c++11 -o prepare.bin prepare.cpp
+./prepare.bin H.txt A.txt A.txt A.txt A.txt A.txt B.txt B.txt B.txt B.txt B.txt A.txt A.txt A.txt A.txt A.txt
+g++ -O3 -std=c++11 -o PMRQMC.bin PMRQMC.cpp
+./PMRQMC.bin > single_thread_output.txt
+```
 
 ## Test Commands
-- **Python unit tests**: `python -m unittest utils/_pauli_manipulations_test.py`
-- **Single test method**: `python -m unittest utils._pauli_manipulations_test.TestClass.test_method`
-- **Run basic simulation**: `./test_run.sh` (generates single_thread_output.txt)
+```bash
+# Run all tests
+ctest
 
-No dedicated test runner or CI setup. Tests are primarily Python unittest-based.
+# Run specific tests
+./build/tests/exexfloat_test      # Test ExExFloat performance optimizations
+./build/tests/physics_test        # Test physics representation (Pauli strings, Hamiltonian)
+
+# Single test run (legacy)
+./test_run.sh
+
+# MPI parallel test (5+ cores enables auto-thermalization)
+mpicxx -O3 -std=c++11 -o PMRQMC_mpi.bin PMRQMC_mpi.cpp
+mpirun -n 5 ./PMRQMC_mpi.bin > therm_test_output.txt
+```
 
 ## Code Style Guidelines
 
-### C++ Conventions
-- **Standard**: C++11 (`-std=c++11`)
-- **Optimization**: Use `-O3` for production builds
-- **Naming**: Use descriptive variable names, consistent with scientific computing style
-- **Error Handling**: Use `std::cout` for errors, `exit(1)` on failure
-- **Includes**: Local includes use quotes `""`, system headers use angle brackets `<>`
-- **Comments**: C-style comments with detailed paper references and licensing info
-- **Formatting**: Mixed tabs/spaces usage observed, favor consistency within files
+### General
+- C++20 standard with modern features (noexcept, constexpr, namespace)
+- Header-only core library structure for numerical components
+- Performance-critical: use -O3 optimization and thread-local caching
+- Scientific computing focus with numerical precision concerns
+- RAII principles and modern C++ best practices
 
-### Python Conventions
-- **Imports**: 
-  - Standard library first, then third-party (numpy), then local modules
-  - Use `sys.path.append("../utils")` for relative imports when needed
-  - Avoid wildcard imports except for specific cases
-- **Naming**: snake_case for variables/functions, CamelCase for classes
-- **Docstrings**: Triple-quoted strings for module/class/function documentation
-- **Error Handling**: Standard try/except patterns, raise appropriate exceptions
-- **Code Organization**: Keep utility functions in dedicated modules
-- **Style**: Follow PEP 8, use type hints when beneficial for clarity
+### Naming Conventions
+- Classes: PascalCase (`ExExFloat`, `PauliString`, `OperatorTerm`, `Hamiltonian`)
+- Functions/Methods: snake_case (`multiply_operators()`, `get_qubits()`, `from_exp()`)
+- Private members: trailing underscore (`mantissa_`, `operators_`, `coefficient_`)
+- Namespaces: lowercase (`pmrqmc::core`)
+- Enum classes: PascalCase (`PauliOp`)
 
-### General Guidelines
-- **Documentation**: Include paper references in file headers
-- **Modularity**: Separate concerns (C++ for QMC, Python for drivers/utilities)
-- **Data Handling**: Use text files for configuration (H.txt, A.txt, B.txt, parameters.hpp)
-- **Version Control**: Commit working configurations rather than generated parameters.hpp
-- **Reproducibility**: Seed random number generators appropriately for reproducible results</content>
-<parameter name="file_path">CRUSH.md
+### Formatting
+- `#pragma once` for header guards
+- Three-slash comments for multi-line documentation
+- Space before/after operators and parentheses
+- Empty lines between logical sections
+- Template syntax: `template<typename T>` not `template <class T>`
+
+### Best Practices
+- Use `noexcept` for non-throwing functions
+- Prefer `constexpr` for compile-time constants
+- Handle special values (NaN, inf, zero) explicitly in math functions
+- Use STL algorithms and containers (`std::map`, `std::vector`, `std::complex`)
+- RAII principles for resource management
+- Thread-local caching for performance-critical operations
+
+### Error Handling
+- Return special values (NaN for invalid sqrt) rather than exceptions
+- Use assertions for internal consistency checks
+- Document preconditions/postconditions in comments
+- Numerical tolerance for floating-point comparisons
+
+### Imports
+- Include what you use, no forward declarations
+- System headers first (`<cmath>`, `<iostream>`, `<limits>`)
+- Project headers with relative paths (`"core/ExExFloat.hpp"`)
+- Prefer angle brackets `<>` over quotes `""` for system includes
+
+## Core Physics Components
+
+### ExExFloat (Extended Exponent Float)
+- Purpose: Avoid overflow/underflow in QMC weight calculations
+- Optimizations: Thread-local power-of-2 caching for arithmetic operations
+- Features: `sqrt()`, `abs()`, `square()`, extreme value handling
+- Performance: 5-8x speedup for common operations via cached lookups
+
+### PauliString
+- Purpose: Represent products of Pauli operators on specific qubits
+- Features: Order-independent equality, commutation checking, state application
+- Operations: Multiplication (with proper Pauli algebra), hashing
+- Usage: `PauliString("X0 Z1 Y2")` for X⊗Z⊗Y on qubits 0,1,2
+
+### OperatorTerm  
+- Purpose: Single Hamiltonian term (coefficient × PauliString)
+- Features: Diagonal/off-diagonal classification, scalar arithmetic
+- Usage: `OperatorTerm(2.5, PauliString("X0 Z1"))` for 2.5 X₀Z₁
+
+### Hamiltonian
+- Purpose: Complete Hamiltonian with file I/O and analysis
+- Features: Parse from files, Hermitian verification, term separation
+- File formats: Both modern (`1.0 Z0`) and legacy (`1.0 0 Z`) support
+- Analysis: Max/min coefficients, diagonal/off-diagonal term counts
+
+## Testing Strategy
+
+### Unit Tests
+- **ExExFloat**: Arithmetic correctness, cache functionality, extreme values
+- **PauliString**: Algebra, commutation, state application, hashing
+- **OperatorTerm**: Classification, arithmetic, coefficient handling
+- **Hamiltonian**: File I/O, property analysis, compatibility
+
+### Performance Tests
+- Cache effectiveness for small exponent differences
+- Large coefficient magnitude handling
+- File parsing speed for legacy and modern formats
+
+### Integration Tests
+- End-to-end Hamiltonian construction and manipulation
+- Mixed arithmetic operations across all types
+- File format conversion and compatibility

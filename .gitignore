@@ -1,61 +1,6 @@
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-*.bin
-
-# Executables
-*.exe
-*.out
-*.app
-
-# Hamiltonian files
-H.txt
-O.txt
-hamiltonian.hpp
-parameters.hpp
-
-# submit scripts
-job_file.sh
-
-# temp data files
-*temp.txt
-*temp_data*
-temp_fidsus_data_zhang_prl_rot_model.txt
-temp_correlator_data_zhang_prl_rot_model.txt
-
-# python cache
-*__pycache__*
-*.ipynb_checkpoints*
-
-# figures, for now
-data_and_plotting/plot_scripts/figures/*
-
-# vs code things
-*vscode*
-
-# old analysis ideas
-*old_analysis_ideas*
+.crush/
+.vscode/
+build/
+legacy/
+strategy.md
+CRUSH.md
