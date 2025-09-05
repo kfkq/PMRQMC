@@ -4,3 +4,5 @@ build/
 legacy/
 strategy.md
 CRUSH.md
+.aider*
+.env
