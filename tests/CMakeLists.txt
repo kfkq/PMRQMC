@@ -32,14 +32,3 @@ target_compile_features(physics_test PRIVATE cxx_std_20)
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.9)
     target_link_libraries(physics_test PRIVATE stdc++fs)
 endif()
-
-# Debug executable for PauliString
-add_executable(debug_pauli
-    debug_pauli.cpp
-)
-
-# Link with core library
-target_link_libraries(debug_pauli PRIVATE pmrqmc_core)
-
-# Enable C++20 for test
-target_compile_features(debug_pauli PRIVATE cxx_std_20)
