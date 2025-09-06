@@ -202,9 +202,21 @@ public:
         return *this;
     }
 
+    ExExFloat& operator*=(double rhs) noexcept {
+        mantissa_ *= rhs;
+        normalize();
+        return *this;
+    }
+
     ExExFloat& operator/=(const ExExFloat& rhs) noexcept {
         mantissa_ /= rhs.mantissa_;
         exponent_ -= rhs.exponent_;
+        normalize();
+        return *this;
+    }
+
+    ExExFloat& operator/=(double rhs) noexcept {
+        mantissa_ /= rhs;
         normalize();
         return *this;
     }

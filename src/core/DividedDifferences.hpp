@@ -100,13 +100,27 @@ public:
             for (size_t k = 0; k < s_ - 1; ++k) {
                 g_matrix_[k * max_len_ + n] = current_g;
                 
+                // Calculate next_g using the correct recurrence from legacy code
                 ExExFloat next_g = g_matrix_[k * max_len_] * h_[n];
                 for (size_t j = 1; j <= n; ++j) {
                     next_g += g_matrix_[k * max_len_ + j] * h_[n - j];
                 }
                 current_g = next_g;
             }
-            results_[n] = current_g;
+            
+            // For the final result (when k = s-1), we don't store in g_matrix
+            // but directly in results_[n]
+            if (s_ > 1) {
+                // For s > 1, we need to compute the final g value
+                ExExFloat final_g = g_matrix_[(s_ - 2) * max_len_] * h_[n];
+                for (size_t j = 1; j <= n; ++j) {
+                    final_g += g_matrix_[(s_ - 2) * max_len_ + j] * h_[n - j];
+                }
+                results_[n] = final_g;
+            } else {
+                // For s = 1, the result is just current_g
+                results_[n] = current_g;
+            }
         }
     }
 
@@ -177,6 +191,9 @@ private:
     int s_ = 1;
     double mu_ = 0.0;
     ExExFloat exp_mu_;
+    
+    // --- Reentrancy guard ---
+    bool is_recomputing_ = false;
 
     // --- Capacity ---
     size_t max_len_;
@@ -198,7 +215,7 @@ private:
      * @return True if a re-computation was performed, false otherwise.
      */
     bool check_and_recompute_if_needed(double z_new) {
-        if (z_.empty()) return false;
+        if (z_.empty() || is_recomputing_) return false;
 
         const bool s_changed = std::abs(z_new - mu_) / kScalingDivisor > s_;
         const bool buffer_full = z_.size() >= max_len_;
@@ -223,6 +240,9 @@ private:
             clear_state();
             return;
         }
+        
+        // Set reentrancy guard to prevent infinite recursion
+        is_recomputing_ = true;
 
         // 1. Calculate new s and mu based on the full current z_ vector
         mu_ = std::accumulate(z_.begin(), z_.end(), 0.0) / z_.size();
@@ -244,6 +264,9 @@ private:
         for (const auto& val : z_copy) {
             add_element(val);
         }
+        
+        // Reset reentrancy guard
+        is_recomputing_ = false;
     }
 
     /**
