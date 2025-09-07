@@ -209,7 +209,7 @@ std::vector<std::vector<int>> compute_nullspace(const std::vector<std::vector<in
     for (int i = 0; i < numRows; ++i) {
         auto it = std::find(marked_rows.begin(), marked_rows.end(), i);
         if (it == marked_rows.end()) {
-            std::vector<int> nullvector(numCols, 0);  // FIXED: was numRows, should be numCols
+            std::vector<int> nullvector(numRows, 0);  // Fixed: nullvector should have numRows elements
             nullvector[i] = 1;
             
             std::vector<int> row_i = matrix_RE[i];
@@ -656,7 +656,7 @@ PMRResult pmr_observable_bulk(const OpSumBulk& observables, const PMRResult& ham
             for (const auto& [pauli, qubit] : term.pauli_ops) {
                 if (pauli == "Z" || pauli == "Y" || pauli == "Sz") {
                     if (qubit < result.N) {
-                        z_product[qubit] = !z_product[qubit];
+                        z_product[result.N - 1 - qubit] = !z_product[result.N - 1 - qubit];  // REVERSED: to match legacy bit ordering
                     }
                 }
             }
