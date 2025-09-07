@@ -19,7 +19,6 @@ set(HEADERS
 
 # Example executables
 add_executable(pmrqmc examples/main.cpp ${SOURCES})
-add_executable(pmrqmc_observables examples/main2.cpp ${SOURCES})
 
 # Main library (if needed)
 add_library(pmrqmc_lib STATIC ${SOURCES} ${HEADERS})
