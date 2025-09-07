@@ -88,7 +88,7 @@ int main() {
     print_pmr_result(ham_pmr);
     
     // Example 2: Simple 2-qubit Hamiltonian
-    std::cout << "\n\n=== Example 2: Simple 6-Qubit Hamiltonian ===" << std::endl;
+    std::cout << "\n\n=== Example 2: Simple 6c-Qubit Hamiltonian ===" << std::endl;
     
     OpSum ham2;
     ham2.add(1.000000, "Z", 0, "Z", 1);

@@ -5,6 +5,7 @@
 #include <map>
 #include <bitset>
 #include <variant>
+#include <optional>
 
 namespace pmrqmc {
 
@@ -101,6 +102,50 @@ private:
     }
 };
 
+// Observable PMR result structure
+struct ObservablePMRResult {
+    // Observable mapping to Hamiltonian permutation operators
+    std::vector<int> MNop;           // Number of permutation operators for each observable
+    std::vector<std::vector<std::vector<bool>>> MP;  // Mapping matrix for each observable
+    
+    // Diagonal terms for observables (MD0)
+    std::vector<int> MD0_size;       // Number of diagonal terms for each observable
+    std::vector<std::vector<std::complex<double>>> MD0_coeff;  // Diagonal coefficients
+    std::vector<std::vector<std::vector<bool>>> MD0_product;   // Diagonal products
+    
+    // Off-diagonal terms for observables (MD)
+    std::vector<std::vector<int>> MD_size;       // Number of off-diagonal terms for each observable
+    std::vector<std::vector<std::vector<std::complex<double>>>> MD_coeff;  // Off-diagonal coefficients
+    std::vector<std::vector<std::vector<std::vector<bool>>>> MD_product;  // Off-diagonal products
+    std::vector<int> MD_maxsize;     // Maximum number of off-diagonal terms for each observable
+    
+    // Observable names
+    std::vector<std::string> Mnames;
+    
+    // Helper methods
+    int get_num_observables() const { return MNop.size(); }
+    
+    // Check if observable has diagonal terms
+    bool has_diagonal_terms(int obs_idx) const { 
+        return obs_idx < MD0_size.size() && MD0_size[obs_idx] > 0; 
+    }
+    
+    // Check if observable has off-diagonal terms
+    bool has_offdiagonal_terms(int obs_idx) const { 
+        return obs_idx < MNop.size() && MNop[obs_idx] > 0; 
+    }
+    
+    // Get diagonal coefficients for observable
+    const std::vector<std::complex<double>>& get_diagonal_coeffs(int obs_idx) const { 
+        return MD0_coeff[obs_idx]; 
+    }
+    
+    // Get off-diagonal coefficients for observable
+    const std::vector<std::vector<std::complex<double>>>& get_offdiagonal_coeffs(int obs_idx) const { 
+        return MD_coeff[obs_idx]; 
+    }
+};
+
 // PMR result structure - directly usable by QMC code
 struct PMRResult {
     int N;                          // Number of qubits
@@ -122,9 +167,13 @@ struct PMRResult {
     std::vector<int> D_size;
     int D_maxsize = 0;
     
+    // Observable PMR data (if computed for observables)
+    std::optional<ObservablePMRResult> observable_data;
+    
     // Helper methods for direct use in QMC
     bool has_diagonal_terms() const { return D0_size > 0; }
     bool has_offdiagonal_terms() const { return Nop > 0; }
+    bool has_observable_data() const { return observable_data.has_value(); }
     
     // Get permutation matrix for operator i
     const std::vector<bool>& get_permutation(int i) const { 
@@ -145,10 +194,95 @@ struct PMRResult {
     int get_operator_terms(int i) const { 
         return D_size[i]; 
     }
+    
+    // Get observable data
+    const ObservablePMRResult& get_observable_data() const { 
+        return observable_data.value(); 
+    }
+};
+
+// Generic collection of OpSum objects for bulk observables
+class OpSumBulk {
+private:
+    std::vector<OpSum> opsums;
+    std::string name_;
+    
+public:
+    explicit OpSumBulk(const std::string& name = "bulk") : name_(name) {}
+    
+    // Add an OpSum to the bulk collection
+    void add(const OpSum& opsum) {
+        opsums.push_back(opsum);
+    }
+    
+    // Access individual OpSum objects
+    OpSum& operator[](size_t index) {
+        return opsums[index];
+    }
+    
+    const OpSum& operator[](size_t index) const {
+        return opsums[index];
+    }
+    
+    // Get all OpSum objects
+    const std::vector<OpSum>& get_opsums() const {
+        return opsums;
+    }
+    
+    // Get the number of OpSum objects in the bulk
+    size_t size() const {
+        return opsums.size();
+    }
+    
+    // Check if bulk is empty
+    bool empty() const {
+        return opsums.empty();
+    }
+    
+    // Clear all OpSum objects
+    void clear() {
+        opsums.clear();
+    }
+    
+    // Get the name of the bulk collection
+    const std::string& get_name() const {
+        return name_;
+    }
+    
+    // Set the name of the bulk collection
+    void set_name(const std::string& name) {
+        name_ = name;
+    }
+    
+    // Iterator support for range-based for loops
+    auto begin() { return opsums.begin(); }
+    auto end() { return opsums.end(); }
+    auto begin() const { return opsums.begin(); }
+    auto end() const { return opsums.end(); }
+    auto cbegin() const { return opsums.cbegin(); }
+    auto cend() const { return opsums.cend(); }
 };
 
 // Main PMR function
 PMRResult pmr(const OpSum& hamiltonian);
+
+// Observable PMR functions
+PMRResult pmr_observable(const OpSum& observable, const PMRResult& hamiltonian_pmr);
+PMRResult pmr_observable_bulk(const OpSumBulk& observables, const PMRResult& hamiltonian_pmr);
+
+// Observable Builder class
+class ObservableBuilder {
+public:
+    // Create single observable from OpSum and Hamiltonian PMR
+    static PMRResult create_single(const OpSum& observable, const PMRResult& hamiltonian_pmr) {
+        return pmr_observable(observable, hamiltonian_pmr);
+    }
+    
+    // Create bulk observable from OpSumBulk and Hamiltonian PMR
+    static PMRResult create_bulk(const OpSumBulk& observables, const PMRResult& hamiltonian_pmr) {
+        return pmr_observable_bulk(observables, hamiltonian_pmr);
+    }
+};
 
 // Helper functions
 std::vector<bool> int_to_bitset(int value, int size);
