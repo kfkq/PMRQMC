@@ -1,8 +1,4 @@
-.crush/
-.vscode/
-build/
 legacy/
-strategy.md
-CRUSH.md
-.aider*
-.env
+build/
+papers_summary/
+plan.md
