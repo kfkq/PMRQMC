@@ -136,7 +136,7 @@ std::vector<bool> pauli_string_to_bitset(const std::vector<std::pair<std::string
     for (const auto& [pauli, qubit] : pauli_ops) {
         if (pauli == "X" || pauli == "Y" || pauli == "Sx" || pauli == "Sy" || pauli == "S+" || pauli == "S-") {
             if (qubit < n_qubits) {
-                result[qubit] = true;
+                result[n_qubits - 1 - qubit] = true;  // REVERSED: to match legacy bit ordering
             }
         }
         // 'Z', 'Sz', 'I' don't contribute to permutation bitset
@@ -170,7 +170,7 @@ std::vector<int> gf2_add(const std::vector<int>& vec1, const std::vector<int>& v
     return result;
 }
 
-// Compute nullspace (adapted from legacy code)
+// Compute nullspace (adapted from legacy code) - FIXED VERSION
 std::vector<std::vector<int>> compute_nullspace(const std::vector<std::vector<int>>& matrix) {
     if (matrix.empty()) return {};
     
@@ -209,7 +209,7 @@ std::vector<std::vector<int>> compute_nullspace(const std::vector<std::vector<in
     for (int i = 0; i < numRows; ++i) {
         auto it = std::find(marked_rows.begin(), marked_rows.end(), i);
         if (it == marked_rows.end()) {
-            std::vector<int> nullvector(numRows, 0);
+            std::vector<int> nullvector(numCols, 0);  // FIXED: was numRows, should be numCols
             nullvector[i] = 1;
             
             std::vector<int> row_i = matrix_RE[i];
@@ -286,7 +286,7 @@ PMRResult pmr(const OpSum& hamiltonian) {
         for (const auto& [pauli, qubit] : term.pauli_ops) {
             if (pauli == "Z" || pauli == "Y" || pauli == "Sz") {
                 if (qubit < result.N) {
-                    z_product[qubit] = !z_product[qubit];
+                    z_product[result.N - 1 - qubit] = !z_product[result.N - 1 - qubit];  // REVERSED: to match legacy bit ordering
                 }
             }
         }
@@ -426,7 +426,7 @@ PMRResult pmr_observable(const OpSum& observable, const PMRResult& hamiltonian_p
         for (const auto& [pauli, qubit] : term.pauli_ops) {
             if (pauli == "Z" || pauli == "Y" || pauli == "Sz") {
                 if (qubit < result.N) {
-                    z_product[qubit] = !z_product[qubit];
+                    z_product[result.N - 1 - qubit] = !z_product[result.N - 1 - qubit];  // REVERSED: to match legacy bit ordering
                 }
             }
         }
@@ -450,24 +450,48 @@ PMRResult pmr_observable(const OpSum& observable, const PMRResult& hamiltonian_p
     }
     
     // Check if observable can be expressed in Hamiltonian permutation basis
+    // Using nullspace method as in legacy prepare.cpp
     for (const auto& [obs_perm, group] : obs_groups) {
-        bool found_match = false;
+        // Skip identity (diagonal) operators - they're always valid
+        bool is_identity = std::all_of(obs_perm.begin(), obs_perm.end(), [](bool x) { return !x; });
+        if (is_identity) {
+            continue;
+        }
         
-        // Check if this matches a Hamiltonian permutation operator
+        // Convert Hamiltonian permutations to integer matrix for nullspace computation
+        std::vector<std::vector<int>> ham_perm_int;
         for (int i = 0; i < result.Nop; ++i) {
-            if (obs_perm == result.P_matrix[i]) {
-                found_match = true;
+            std::vector<int> perm_row;
+            for (bool bit : result.P_matrix[i]) {
+                perm_row.push_back(bit ? 1 : 0);
+            }
+            ham_perm_int.push_back(perm_row);
+        }
+        
+        // Convert observable permutation to integer vector
+        std::vector<int> obs_perm_int;
+        for (bool bit : obs_perm) {
+            obs_perm_int.push_back(bit ? 1 : 0);
+        }
+        
+        // Create combined matrix for nullspace computation
+        std::vector<std::vector<int>> combined_matrix = ham_perm_int;
+        combined_matrix.push_back(obs_perm_int);
+        
+        // Compute nullspace
+        auto nullspace = compute_nullspace(combined_matrix);
+        
+        // Check if any nullspace vector has the last element set to 1
+        // This means the observable permutation can be expressed as a combination of Hamiltonian permutations
+        bool permutation_found = false;
+        for (const auto& nullvector : nullspace) {
+            if (nullvector.back() == 1) {  // Last element corresponds to observable permutation
+                permutation_found = true;
                 break;
             }
         }
         
-        // Check if this is the identity (diagonal) operator
-        bool is_identity = std::all_of(obs_perm.begin(), obs_perm.end(), [](bool x) { return !x; });
-        if (is_identity) {
-            found_match = true;
-        }
-        
-        if (!found_match) {
+        if (!permutation_found) {
             throw std::runtime_error("Error! The input observable cannot be written in terms of the permutation operators of the Hamiltonian");
         }
     }
@@ -537,16 +561,59 @@ PMRResult pmr_observable(const OpSum& observable, const PMRResult& hamiltonian_p
     obs_data.MD_size.push_back(obs_D_size);
     obs_data.MD_maxsize[0] = obs_D_maxsize;
     
-    // Create mapping matrix (MP) - which Hamiltonian permutation operators this observable uses
+    // Create mapping matrix (MP) using nullspace method as in legacy prepare.cpp
     std::vector<std::vector<bool>> mapping_matrix;
     for (const auto& obs_perm : obs_nontrivial_perms) {
-        std::vector<bool> mapping_row(result.Nop, false);
+        // Convert Hamiltonian permutations to integer matrix
+        std::vector<std::vector<int>> ham_perm_int;
         for (int i = 0; i < result.Nop; ++i) {
-            if (obs_perm == result.P_matrix[i]) {
-                mapping_row[i] = true;
-                break;
+            std::vector<int> perm_row;
+            for (bool bit : result.P_matrix[i]) {
+                perm_row.push_back(bit ? 1 : 0);
+            }
+            ham_perm_int.push_back(perm_row);
+        }
+        
+        // Convert observable permutation to integer vector
+        std::vector<int> obs_perm_int;
+        for (bool bit : obs_perm) {
+            obs_perm_int.push_back(bit ? 1 : 0);
+        }
+        
+        // Create combined matrix for nullspace computation
+        std::vector<std::vector<int>> combined_matrix = ham_perm_int;
+        combined_matrix.push_back(obs_perm_int);
+        
+        // Compute nullspace
+        auto nullspace = compute_nullspace(combined_matrix);
+        
+        // Find the nullspace vector with last element = 1 and minimum number of 1s
+        std::vector<int> best_mapping(result.Nop, 0);
+        bool found_mapping = false;
+        int min_ones = result.Nop + 1;
+        
+        for (const auto& nullvector : nullspace) {
+            if (nullvector.back() == 1) {
+                int num_ones = 0;
+                for (int i = 0; i < result.Nop; ++i) {
+                    if (nullvector[i] == 1) num_ones++;
+                }
+                if (num_ones < min_ones) {
+                    min_ones = num_ones;
+                    best_mapping = nullvector;
+                    found_mapping = true;
+                }
             }
         }
+        
+        // Convert to boolean mapping row (excluding the last element which corresponds to observable)
+        std::vector<bool> mapping_row(result.Nop, false);
+        if (found_mapping) {
+            for (int i = 0; i < result.Nop; ++i) {
+                mapping_row[i] = (best_mapping[i] == 1);
+            }
+        }
+        
         mapping_matrix.push_back(mapping_row);
     }
     
@@ -613,24 +680,48 @@ PMRResult pmr_observable_bulk(const OpSumBulk& observables, const PMRResult& ham
         }
         
         // Check if observable can be expressed in Hamiltonian permutation basis
+        // Using nullspace method as in legacy prepare.cpp
         for (const auto& [obs_perm, group] : obs_groups) {
-            bool found_match = false;
+            // Skip identity (diagonal) operators - they're always valid
+            bool is_identity = std::all_of(obs_perm.begin(), obs_perm.end(), [](bool x) { return !x; });
+            if (is_identity) {
+                continue;
+            }
             
-            // Check if this matches a Hamiltonian permutation operator
+            // Convert Hamiltonian permutations to integer matrix for nullspace computation
+            std::vector<std::vector<int>> ham_perm_int;
             for (int i = 0; i < result.Nop; ++i) {
-                if (obs_perm == result.P_matrix[i]) {
-                    found_match = true;
+                std::vector<int> perm_row;
+                for (bool bit : result.P_matrix[i]) {
+                    perm_row.push_back(bit ? 1 : 0);
+                }
+                ham_perm_int.push_back(perm_row);
+            }
+            
+            // Convert observable permutation to integer vector
+            std::vector<int> obs_perm_int;
+            for (bool bit : obs_perm) {
+                obs_perm_int.push_back(bit ? 1 : 0);
+            }
+            
+            // Create combined matrix for nullspace computation
+            std::vector<std::vector<int>> combined_matrix = ham_perm_int;
+            combined_matrix.push_back(obs_perm_int);
+            
+            // Compute nullspace
+            auto nullspace = compute_nullspace(combined_matrix);
+            
+            // Check if any nullspace vector has the last element set to 1
+            // This means the observable permutation can be expressed as a combination of Hamiltonian permutations
+            bool permutation_found = false;
+            for (const auto& nullvector : nullspace) {
+                if (nullvector.back() == 1) {  // Last element corresponds to observable permutation
+                    permutation_found = true;
                     break;
                 }
             }
             
-            // Check if this is the identity (diagonal) operator
-            bool is_identity = std::all_of(obs_perm.begin(), obs_perm.end(), [](bool x) { return !x; });
-            if (is_identity) {
-                found_match = true;
-            }
-            
-            if (!found_match) {
+            if (!permutation_found) {
                 throw std::runtime_error("Error! The input observable cannot be written in terms of the permutation operators of the Hamiltonian");
             }
         }
@@ -700,16 +791,59 @@ PMRResult pmr_observable_bulk(const OpSumBulk& observables, const PMRResult& ham
         obs_data.MD_size.push_back(obs_D_size);
         obs_data.MD_maxsize.back() = obs_D_maxsize;
         
-        // Create mapping matrix (MP) - which Hamiltonian permutation operators this observable uses
+        // Create mapping matrix (MP) using nullspace method as in legacy prepare.cpp
         std::vector<std::vector<bool>> mapping_matrix;
         for (const auto& obs_perm : obs_nontrivial_perms) {
-            std::vector<bool> mapping_row(result.Nop, false);
+            // Convert Hamiltonian permutations to integer matrix
+            std::vector<std::vector<int>> ham_perm_int;
             for (int i = 0; i < result.Nop; ++i) {
-                if (obs_perm == result.P_matrix[i]) {
-                    mapping_row[i] = true;
-                    break;
+                std::vector<int> perm_row;
+                for (bool bit : result.P_matrix[i]) {
+                    perm_row.push_back(bit ? 1 : 0);
+                }
+                ham_perm_int.push_back(perm_row);
+            }
+            
+            // Convert observable permutation to integer vector
+            std::vector<int> obs_perm_int;
+            for (bool bit : obs_perm) {
+                obs_perm_int.push_back(bit ? 1 : 0);
+            }
+            
+            // Create combined matrix for nullspace computation
+            std::vector<std::vector<int>> combined_matrix = ham_perm_int;
+            combined_matrix.push_back(obs_perm_int);
+            
+            // Compute nullspace
+            auto nullspace = compute_nullspace(combined_matrix);
+            
+            // Find the nullspace vector with last element = 1 and minimum number of 1s
+            std::vector<int> best_mapping(result.Nop, 0);
+            bool found_mapping = false;
+            int min_ones = result.Nop + 1;
+            
+            for (const auto& nullvector : nullspace) {
+                if (nullvector.back() == 1) {
+                    int num_ones = 0;
+                    for (int i = 0; i < result.Nop; ++i) {
+                        if (nullvector[i] == 1) num_ones++;
+                    }
+                    if (num_ones < min_ones) {
+                        min_ones = num_ones;
+                        best_mapping = nullvector;
+                        found_mapping = true;
+                    }
                 }
             }
+            
+            // Convert to boolean mapping row (excluding the last element which corresponds to observable)
+            std::vector<bool> mapping_row(result.Nop, false);
+            if (found_mapping) {
+                for (int i = 0; i < result.Nop; ++i) {
+                    mapping_row[i] = (best_mapping[i] == 1);
+                }
+            }
+            
             mapping_matrix.push_back(mapping_row);
         }
         
