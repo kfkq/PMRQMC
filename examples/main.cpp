@@ -5,7 +5,7 @@
 
 using namespace pmrqmc;
 
-void print_pmr_result(const PMRResult& result) {
+void print_pmr_result(const PMR& result) {
     std::cout << "=== PMR Result ===" << std::endl;
     std::cout << "N (qubits): " << result.N << std::endl;
     std::cout << "Nop (permutation operators): " << result.Nop << std::endl;
@@ -59,7 +59,7 @@ void print_pmr_result(const PMRResult& result) {
     }
 }
 
-void print_observable_data(const ObservablePMRResult& obs_data) {
+void print_observable_data(const ObservablePMR& obs_data) {
     std::cout << "=== Observable PMR Data ===" << std::endl;
     std::cout << "Number of observables: " << obs_data.get_num_observables() << std::endl;
     

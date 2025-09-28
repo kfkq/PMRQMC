@@ -13,7 +13,7 @@ namespace pmrqmc {
 class OpSum;
 
 // Observable PMR result structure
-struct ObservablePMRResult {
+struct ObservablePMR {
     // Observable mapping to Hamiltonian permutation operators
     std::vector<int> MNop;           // Number of permutation operators for each observable
     std::vector<std::vector<std::vector<bool>>> MP;  // Mapping matrix for each observable
@@ -57,7 +57,7 @@ struct ObservablePMRResult {
 };
 
 // PMR result structure - directly usable by QMC code
-struct PMRResult {
+struct PMR {
     int N;                          // Number of qubits
     int Nop;                        // Number of permutation operators
     int Ncycles;                    // Number of fundamental cycles
@@ -78,7 +78,7 @@ struct PMRResult {
     int D_maxsize = 0;
     
     // Observable PMR data (if computed for observables)
-    std::optional<ObservablePMRResult> observable_data;
+    std::optional<ObservablePMR> observable_data;
     
     // Helper methods for direct use in QMC
     bool has_diagonal_terms() const { return D0_size > 0; }
@@ -106,7 +106,7 @@ struct PMRResult {
     }
     
     // Get observable data
-    const ObservablePMRResult& get_observable_data() const { 
+    const ObservablePMR& get_observable_data() const { 
         return observable_data.value(); 
     }
 };
@@ -158,18 +158,18 @@ public:
 class ObservableBuilder {
 public:
     // Create single observable from OpSum and Hamiltonian PMR
-    static PMRResult create_single(const OpSum& observable, const PMRResult& hamiltonian_pmr);
+    static PMR create_single(const OpSum& observable, const PMR& hamiltonian_pmr);
     
     // Create bulk observable from OpSumBulk and Hamiltonian PMR
-    static PMRResult create_bulk(const OpSumBulk& observables, const PMRResult& hamiltonian_pmr);
+    static PMR create_bulk(const OpSumBulk& observables, const PMR& hamiltonian_pmr);
 };
 
 // Main PMR function
-PMRResult pmr(const OpSum& hamiltonian);
+PMR pmr(const OpSum& hamiltonian);
 
 // Observable PMR functions
-PMRResult pmr_observable(const OpSum& observable, const PMRResult& hamiltonian_pmr);
-PMRResult pmr_observable_bulk(const OpSumBulk& observables, const PMRResult& hamiltonian_pmr);
+PMR pmr_observable(const OpSum& observable, const PMR& hamiltonian_pmr);
+PMR pmr_observable_bulk(const OpSumBulk& observables, const PMR& hamiltonian_pmr);
 
 // Helper functions
 std::vector<bool> int_to_bitset(int value, int size);

@@ -52,11 +52,11 @@ std::vector<OpSum>::const_iterator OpSumBulk::cbegin() const { return opsums.cbe
 std::vector<OpSum>::const_iterator OpSumBulk::cend() const { return opsums.cend(); }
 
 // ObservableBuilder implementation
-PMRResult ObservableBuilder::create_single(const OpSum& observable, const PMRResult& hamiltonian_pmr) {
+PMR ObservableBuilder::create_single(const OpSum& observable, const PMR& hamiltonian_pmr) {
     return pmr_observable(observable, hamiltonian_pmr);
 }
 
-PMRResult ObservableBuilder::create_bulk(const OpSumBulk& observables, const PMRResult& hamiltonian_pmr) {
+PMR ObservableBuilder::create_bulk(const OpSumBulk& observables, const PMR& hamiltonian_pmr) {
     return pmr_observable_bulk(observables, hamiltonian_pmr);
 }
 
@@ -203,8 +203,8 @@ int minimize_cycles(std::vector<std::vector<int>>& null_eigs) {
 }
 
 // Main PMR computation functions
-PMRResult pmr(const OpSum& hamiltonian) {
-    PMRResult result;
+PMR pmr(const OpSum& hamiltonian) {
+    PMR result;
     
     // Get basic information
     const auto& terms = hamiltonian.get_terms();
@@ -339,11 +339,11 @@ PMRResult pmr(const OpSum& hamiltonian) {
 }
 
 // Observable PMR computation functions
-PMRResult pmr_observable(const OpSum& observable, const PMRResult& hamiltonian_pmr) {
-    PMRResult result = hamiltonian_pmr; // Copy Hamiltonian PMR data
+PMR pmr_observable(const OpSum& observable, const PMR& hamiltonian_pmr) {
+    PMR result = hamiltonian_pmr; // Copy Hamiltonian PMR data
     
     // Initialize observable data structure
-    ObservablePMRResult obs_data;
+    ObservablePMR obs_data;
     obs_data.Mnames.push_back(observable.get_name());
     
     // Get observable terms
@@ -566,11 +566,11 @@ PMRResult pmr_observable(const OpSum& observable, const PMRResult& hamiltonian_p
     return result;
 }
 
-PMRResult pmr_observable_bulk(const OpSumBulk& observables, const PMRResult& hamiltonian_pmr) {
-    PMRResult result = hamiltonian_pmr; // Copy Hamiltonian PMR data
+PMR pmr_observable_bulk(const OpSumBulk& observables, const PMR& hamiltonian_pmr) {
+    PMR result = hamiltonian_pmr; // Copy Hamiltonian PMR data
     
     // Initialize observable data structure
-    ObservablePMRResult obs_data;
+    ObservablePMR obs_data;
     
     // Process each observable in the bulk
     for (const auto& observable : observables.get_opsums()) {
