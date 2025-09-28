@@ -165,25 +165,25 @@ int main() {
     std::cout << "\n\n=== Example 2: Spin-Spin Correlation Functions ===" << std::endl;
     
     // Create bulk observables for correlation functions O_r = 1/N \sum_{r = r_i-r_j} Z_i Z_j
-    OpSumBulk correlation_observables("spin_correlations");
+    OpSumBulk szsz_corr("spin_correlations");
     
     // Generate correlation observables for different distances r
     const int max_distance = N_QUBITS / 2;  // Maximum distance to consider
     
     for (int r = 1; r <= max_distance; ++r) {
-        OpSum correlation_r("corr_r_" + std::to_string(r));
+        OpSum szsz_r("corr_r_" + std::to_string(r));
         
         // Sum over all pairs of sites with distance r (considering periodic boundary)
         for (int i = 0; i < N_QUBITS; ++i) {
             int j = (i + r) % N_QUBITS;  // Periodic boundary conditions
-            correlation_r.add(1.0 / N_QUBITS, "Z", i, "Z", j);
+            szsz_r.add(1.0 / N_QUBITS, "Z", i, "Z", j);
         }// For now, we'll add normalization in the PMR processing
         
-        correlation_observables.add(correlation_r);
+        szsz_corr.add(szsz_r);
     }
     
     // Generate PMR for all correlation observables
-    auto correlations_pmr = pmr_obs(correlation_observables, ham_pmr);
+    auto correlations_pmr = pmr_obs(szsz_corr, ham_pmr);
     
     if (correlations_pmr.has_observable_data()) {
         print_observable_data(correlations_pmr.get_observable_data());
