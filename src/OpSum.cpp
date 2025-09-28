@@ -119,4 +119,48 @@ void OpSum::print() const {
     }
 }
 
+// OpSumBulk implementation
+void OpSumBulk::add(const OpSum& opsum) {
+    opsums.push_back(opsum);
+}
+
+OpSum& OpSumBulk::operator[](size_t index) {
+    return opsums[index];
+}
+
+const OpSum& OpSumBulk::operator[](size_t index) const {
+    return opsums[index];
+}
+
+const std::vector<OpSum>& OpSumBulk::get_opsums() const {
+    return opsums;
+}
+
+size_t OpSumBulk::size() const {
+    return opsums.size();
+}
+
+bool OpSumBulk::empty() const {
+    return opsums.empty();
+}
+
+void OpSumBulk::clear() {
+    opsums.clear();
+}
+
+const std::string& OpSumBulk::get_name() const {
+    return name_;
+}
+
+void OpSumBulk::set_name(const std::string& name) {
+    name_ = name;
+}
+
+std::vector<OpSum>::iterator OpSumBulk::begin() { return opsums.begin(); }
+std::vector<OpSum>::iterator OpSumBulk::end() { return opsums.end(); }
+std::vector<OpSum>::const_iterator OpSumBulk::begin() const { return opsums.begin(); }
+std::vector<OpSum>::const_iterator OpSumBulk::end() const { return opsums.end(); }
+std::vector<OpSum>::const_iterator OpSumBulk::cbegin() const { return opsums.cbegin(); }
+std::vector<OpSum>::const_iterator OpSumBulk::cend() const { return opsums.cend(); }
+
 } // namespace pmrqmc

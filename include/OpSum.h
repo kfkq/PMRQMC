@@ -102,4 +102,47 @@ private:
     }
 };
 
+// Generic collection of OpSum objects for bulk observables
+class OpSumBulk {
+private:
+    std::vector<OpSum> opsums;
+    std::string name_;
+
+public:
+    explicit OpSumBulk(const std::string& name = "bulk") : name_(name) {}
+
+    // Add an OpSum to the bulk collection
+    void add(const OpSum& opsum);
+
+    // Access individual OpSum objects
+    OpSum& operator[](size_t index);
+    const OpSum& operator[](size_t index) const;
+
+    // Get all OpSum objects
+    const std::vector<OpSum>& get_opsums() const;
+
+    // Get the number of OpSum objects in the bulk
+    size_t size() const;
+
+    // Check if bulk is empty
+    bool empty() const;
+
+    // Clear all OpSum objects
+    void clear();
+
+    // Get the name of the bulk collection
+    const std::string& get_name() const;
+
+    // Set the name of the bulk collection
+    void set_name(const std::string& name);
+
+    // Iterator support for range-based for loops
+    std::vector<OpSum>::iterator begin();
+    std::vector<OpSum>::iterator end();
+    std::vector<OpSum>::const_iterator begin() const;
+    std::vector<OpSum>::const_iterator end() const;
+    std::vector<OpSum>::const_iterator cbegin() const;
+    std::vector<OpSum>::const_iterator cend() const;
+};
+
 } // namespace pmrqmc

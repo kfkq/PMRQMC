@@ -155,7 +155,7 @@ int main() {
     std::cout << std::endl;
 
     // Generate PMR for observable
-    auto mag_pmr = ObservableBuilder::create_single(mag, ham_pmr);
+    auto mag_pmr = pmr_obs(mag, ham_pmr);
     
     if (mag_pmr.has_observable_data()) {
         print_observable_data(mag_pmr.get_observable_data());
@@ -183,7 +183,7 @@ int main() {
     }
     
     // Generate PMR for all correlation observables
-    auto correlations_pmr = ObservableBuilder::create_bulk(correlation_observables, ham_pmr);
+    auto correlations_pmr = pmr_obs(correlation_observables, ham_pmr);
     
     if (correlations_pmr.has_observable_data()) {
         print_observable_data(correlations_pmr.get_observable_data());
