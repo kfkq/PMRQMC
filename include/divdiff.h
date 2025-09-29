@@ -205,7 +205,7 @@ protected:
 
     // Central expansion point
     double meanVal;                             // Central value μ for Hermite expansion
-    ExExFloat expCentral;                            // e^μ for efficient calculations
+    ExExFloat expMu;                            // e^μ for efficient calculations
 
     // Helper functions
     double calculateMean(double* values, int count);                // Calculate arithmetic mean

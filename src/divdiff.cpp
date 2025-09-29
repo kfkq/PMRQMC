@@ -402,7 +402,7 @@ divdiff::divdiff(const divdiff& other) { // copy constructor
     currentLength = other.currentLength;
     scaleFactor = other.scaleFactor;
     meanVal = other.meanVal;
-    expCentral = other.expCentral;
+    expMu = other.expMu;
     memcpy(zVals, other.zVals, maxLen * sizeof(double));
     memcpy(hCoeffs, other.hCoeffs, (maxLen + EXTRA_LEN + 1) * sizeof(ExExFloat));
     memcpy(divDiffs, other.divDiffs, (maxLen + EXTRA_LEN + 1) * sizeof(ExExFloat));
@@ -413,7 +413,7 @@ divdiff::divdiff(const divdiff& other) { // copy constructor
 divdiff& divdiff::operator=(const divdiff& other){ // copy assignment operator
 	freeMemory();
 	maxLen=other.maxLen; maxScale=other.maxScale; allocateMemory();
-	currentLength=other.currentLength; scaleFactor=other.scaleFactor; meanVal=other.meanVal; expCentral=other.expCentral;
+	currentLength=other.currentLength; scaleFactor=other.scaleFactor; meanVal=other.meanVal; expMu=other.expMu;
 	memcpy(zVals,other.zVals,maxLen*sizeof(double));
 	memcpy(hCoeffs,other.hCoeffs,(maxLen+EXTRA_LEN+1)*sizeof(ExExFloat));
 	memcpy(divDiffs,other.divDiffs,(maxLen+EXTRA_LEN+1)*sizeof(ExExFloat));
@@ -510,7 +510,7 @@ void divdiff::addElement(double newZValue, int forcedScale, double forcedCentral
     if (currentLength == 1) {
         scaleFactor = (forcedScale == 0) ? 1 : forcedScale;
         meanVal = (forcedCentral == 0) ? zVals[0] : forcedCentral;
-        expCentral.initExpMu(meanVal);
+        expMu.initExpMu(meanVal);
         hCoeffs[0] = 1;
         for (k = 1; k <= N; k++) {
             hCoeffs[k] = hCoeffs[k - 1] / scaleFactor;
@@ -520,7 +520,7 @@ void divdiff::addElement(double newZValue, int forcedScale, double forcedCentral
                 hCoeffs[k - 1] += hCoeffs[k] * (zVals[0] - meanVal) / k;
             }
         }
-        curr = expCentral * hCoeffs[0];
+        curr = expMu * hCoeffs[0];
         for (k = 0; k < scaleFactor - 1; k++) {
             derivTerms[k * maxLen] = curr;
             curr *= hCoeffs[0];
@@ -532,7 +532,7 @@ void divdiff::addElement(double newZValue, int forcedScale, double forcedCentral
         for (k = N; k > n; k--) {
             hCoeffs[k - 1] += hCoeffs[k] * (zVals[n] - meanVal) / k;
         }
-        curr = expCentral * hCoeffs[n];
+        curr = expMu * hCoeffs[n];
         for (k = n; k >= 1; k--) {
             hCoeffs[k - 1] = (hCoeffs[k - 1] * n + hCoeffs[k] * (zVals[n] - zVals[n - k])) / (n - k + 1);
         }
