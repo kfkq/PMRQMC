@@ -18,7 +18,7 @@ set(SOURCES
 set(HEADERS
     include/OpSum.h
     include/PMR.h
-    include/divdiff.hpp
+    include/divdiff.h
 )
 
 # Example executables

@@ -25,8 +25,8 @@ void print_pmr_result(const PMR& result) {
     std::cout << "\n=== Cycles ===" << std::endl;
     for (int i = 0; i < result.Ncycles; ++i) {
         std::cout << "Cycle[" << i << "]: ";
-        for (bool bit : result.cycles[i]) {
-            std::cout << bit;
+        for (int j = result.Nop - 1; j >= 0; --j) {
+            std::cout << result.cycles[i][j];
         }
         std::cout << std::endl;
     }
