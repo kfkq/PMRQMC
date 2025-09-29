@@ -11,12 +11,14 @@ include_directories(include)
 set(SOURCES
     src/OpSum.cpp
     src/PMR.cpp
+    src/divdiff.cpp
 )
 
 # Header files
 set(HEADERS
     include/OpSum.h
     include/PMR.h
+    include/divdiff.hpp
 )
 
 # Example executables

@@ -145,7 +145,7 @@ int main() {
     // Example 1: Single Observable - Magnetization
     std::cout << "\n\n=== Observable 1: Single Observable - Magnetization ===" << std::endl;
     
-    OpSum mag("obs");
+    OpSum mag("magnetization");
     for (int i = 0; i < N_QUBITS; ++i) {
         mag.add(1.0, "Z", i);
     }
@@ -165,7 +165,7 @@ int main() {
     std::cout << "\n\n=== Example 2: Spin-Spin Correlation Functions ===" << std::endl;
     
     // Create bulk observables for correlation functions O_r = 1/N \sum_{r = r_i-r_j} Z_i Z_j
-    OpSumBulk szsz_corr("spin_correlations");
+    OpSumBulk szsz_corr("spinz_correlation");
     
     // Generate correlation observables for different distances r
     const int max_distance = N_QUBITS / 2;  // Maximum distance to consider
