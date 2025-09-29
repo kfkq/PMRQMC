@@ -1,154 +1,359 @@
-#pragma once
+//
+// These routines are introduced in the paper:
+// L. Gupta, L. Barash, I. Hen, Calculating the divided differences of the exponential function by addition and removal of inputs, Computer Physics Communications 254, 107385 (2020)
+//
+// Various adjustments for advanced measurement capabilities were
+// introduced in the papers:
+// * Nic Ezzell, Lev Barash, Itay Hen, Exact and universal quantum Monte Carlo estimators for energy susceptibility and fidelity susceptibility, arXiv:2408.03924 (2024).
+// * Nic Ezzell and Itay Hen, Advanced measurement techniques in quantum Monte Carlo: The permutation matrix representation approach, arXiv:2504.07295 (2025).
+//
+// This program is licensed under a Creative Commons Attribution 4.0 International License:
+// http://creativecommons.org/licenses/by/4.0/
+//
 
-#include <vector>
-#include <string>
-#include <iostream>
-#include <memory>
-#include <array>
-#include <cmath>
-#include <algorithm>
-#include <limits>
-#include <stdexcept>
+#include<random>
+#include<stdio.h>
+#include<string.h>
+#include<math.h>
 
-namespace pmrqmc {
+double* invPowersOf2 {NULL};
+const int maxexp = 100000;
+const int extralen = 10;
 
-/**
- * Extended-exponent floating-point number for handling very large ranges
- * in divided differences of exponential function computations.
- *
- * Uses a double-precision mantissa with extended integer exponent range.
- */
-class ExExFloat {
-public:
-    // Maximum exponent value for safety and precomputed powers
-    static constexpr int max_exponent = 100'000;
+template <typename T> T min (T a, T b) { return (b>=a)?a:b;}
+template <typename T> T max (T a, T b) { return (b>=a)?b:a;}
 
-    // Constructors
-    ExExFloat() noexcept = default;
-    ExExFloat(double val) noexcept;
-    ExExFloat(const ExExFloat&) noexcept = default;
-    ExExFloat(ExExFloat&&) noexcept = default;
-
-    // Assignment
-    ExExFloat& operator=(const ExExFloat&) noexcept = default;
-    ExExFloat& operator=(ExExFloat&&) noexcept = default;
-    ExExFloat& operator=(double rhs) noexcept;
-
-    // Arithmetic operators
-    ExExFloat operator+(const ExExFloat& rhs) const noexcept;
-    ExExFloat operator-(const ExExFloat& rhs) const noexcept;
-    ExExFloat operator*(const ExExFloat& rhs) const noexcept;
-    ExExFloat operator/(const ExExFloat& rhs) const;
-
-    ExExFloat operator*(double rhs) const noexcept;
-    ExExFloat operator/(double rhs) const;
-    friend ExExFloat operator*(double lhs, const ExExFloat& rhs) noexcept;
-    friend ExExFloat operator/(double lhs, const ExExFloat& rhs);
-
-    // Compound assignment
-    ExExFloat& operator+=(const ExExFloat& rhs) noexcept;
-    ExExFloat& operator-=(const ExExFloat& rhs) noexcept;
-    ExExFloat& operator*=(const ExExFloat& rhs) noexcept;
-    ExExFloat& operator/=(const ExExFloat& rhs);
-    ExExFloat& operator*=(double rhs) noexcept;
-    ExExFloat& operator/=(double rhs);
-
-    // Comparison (assumes non-negative mantissas)
-    bool operator>=(const ExExFloat& rhs) const noexcept;
-    bool operator>=(double rhs) const noexcept;
-
-    // Utility functions
-    [[nodiscard]] double double_value() const noexcept;
-    [[nodiscard]] int sign() const noexcept;
-    [[nodiscard]] ExExFloat abs() const noexcept;
-    [[nodiscard]] ExExFloat sqrt() const;
-
-    void init_expmu(double mu);
-    void print(std::ostream& os = std::cout) const;
-
+class ExExFloat{
 private:
-    double mantissa{0.5};
-    int exponent{0};
-
-    void normalize() noexcept;
-
-    friend std::ostream& operator<<(std::ostream& os, const ExExFloat& val) {
-        val.print(os);
-        return os;
-    }
+	double mantissa;
+	int exponent;
+public:
+	ExExFloat() : mantissa(0.5), exponent(1) {}
+	ExExFloat(double obj) : mantissa(obj), exponent(0) { normalize(); }
+	ExExFloat(ExExFloat const &obj) : mantissa(obj.mantissa), exponent(obj.exponent) {}
+	void normalize(){ int tmp; mantissa = frexp(mantissa,&tmp); exponent += tmp;}
+	void init_expmu(double mu){ double e = mu*1.4426950408889634; exponent = ceil(e); mantissa = pow(2.,e - ceil(e)); }
+	void print(){
+		double exp10, m;
+		exp10 = (exponent*0.30102999566398114);
+		m = mantissa*pow(10,exp10 - floor(exp10)); 
+		exp10 = floor(exp10); if(fabs(m)<1){ exp10--; m*=10; }
+		if((exp10<99)&&(exp10>-99)) printf("%.17f",get_double()); else printf("%.17fe%.0f",m,exp10);
+	}
+	ExExFloat operator =(ExExFloat const &obj){ mantissa = obj.mantissa; exponent = obj.exponent;	return *this;}
+	ExExFloat operator =(double const &obj){ mantissa = obj; exponent = 0; normalize(); return *this;}
+	ExExFloat operator +(ExExFloat const &obj){
+		ExExFloat res;
+		if(obj.exponent >= exponent){
+			if(obj.mantissa == 0.0){
+				res.mantissa = mantissa; res.exponent = exponent; res.normalize();
+			} else{
+				res.mantissa = obj.mantissa + mantissa*invPowersOf2[obj.exponent - exponent];
+				res.exponent = obj.exponent; res.normalize();
+			}
+		} else{
+			if(mantissa == 0.0){
+				res.mantissa = obj.mantissa; res.exponent = obj.exponent; res.normalize();
+			} else{
+				res.mantissa = mantissa + obj.mantissa*invPowersOf2[exponent - obj.exponent];
+				res.exponent = exponent; res.normalize();
+			}
+		}
+		return res;
+	}
+	ExExFloat operator -(ExExFloat const &obj){
+		ExExFloat res;
+		if(obj.exponent >= exponent){
+			if(obj.mantissa == 0.0){
+				res.mantissa = mantissa; res.exponent = exponent; res.normalize();
+			} else{
+				res.mantissa = mantissa*invPowersOf2[obj.exponent - exponent] - obj.mantissa;
+				res.exponent = obj.exponent; res.normalize();
+			}
+		} else{
+			if(mantissa == 0.0){
+				res.mantissa = -obj.mantissa; res.exponent = obj.exponent; res.normalize();
+			} else{
+				res.mantissa = mantissa - obj.mantissa*invPowersOf2[exponent - obj.exponent];
+				res.exponent = exponent; res.normalize();
+			}
+		}
+		return res;
+	}
+	ExExFloat operator +=(ExExFloat const &obj){
+		if(obj.exponent >= exponent){
+			if(obj.mantissa == 0.0){
+				normalize();
+			} else{
+				mantissa = obj.mantissa + mantissa*invPowersOf2[obj.exponent - exponent];
+				exponent = obj.exponent; normalize();
+			}
+		} else{
+			if(mantissa == 0.0){
+				mantissa = obj.mantissa; exponent = obj.exponent; normalize();
+			} else{
+				mantissa = mantissa + obj.mantissa*invPowersOf2[exponent - obj.exponent];
+				normalize();
+			}
+		}
+		return *this;
+	}
+	ExExFloat operator -=(ExExFloat const &obj){
+		if(obj.exponent >= exponent){
+			if(obj.mantissa == 0.0){
+				normalize();
+			} else{
+				mantissa = mantissa*invPowersOf2[obj.exponent - exponent] - obj.mantissa;
+				exponent = obj.exponent; normalize();
+			}
+		} else{
+			if(mantissa == 0.0){
+				mantissa = -obj.mantissa; exponent = obj.exponent; normalize();
+			} else{
+				mantissa = mantissa - obj.mantissa*invPowersOf2[exponent - obj.exponent];
+				normalize();
+			}
+		}
+		return *this;
+	}
+	ExExFloat operator *(ExExFloat const &obj){
+		ExExFloat res;	res.mantissa = mantissa * obj.mantissa;	res.exponent = exponent + obj.exponent;
+		res.normalize(); return res;
+	}
+	ExExFloat operator /(ExExFloat const &obj){
+		ExExFloat res;	res.mantissa = mantissa / obj.mantissa;
+		res.exponent = exponent - obj.exponent;	res.normalize(); return res;
+	}
+	ExExFloat operator *(double const &obj){ ExExFloat res; res.mantissa = mantissa * obj; res.exponent = exponent; res.normalize(); return res; }
+	ExExFloat operator /(double const &obj){ ExExFloat res; res.mantissa = mantissa / obj; res.exponent = exponent; res.normalize(); return res; }
+	ExExFloat operator *=(ExExFloat const &obj){ mantissa *= obj.mantissa; exponent += obj.exponent; normalize(); return *this;}
+	ExExFloat operator /=(ExExFloat const &obj){ mantissa /= obj.mantissa; exponent -= obj.exponent; normalize(); return *this;}
+	ExExFloat operator *=(double const &obj){ mantissa *= obj; normalize(); return *this;}
+	ExExFloat operator /=(double const &obj){ mantissa /= obj; normalize(); return *this;}
+	friend ExExFloat operator *(double lhs, const ExExFloat& rhs){
+		ExExFloat res; res.mantissa = rhs.mantissa * lhs; res.exponent = rhs.exponent; res.normalize(); return res;
+	}
+	friend ExExFloat operator /(double lhs, const ExExFloat& rhs){
+		ExExFloat res; res.mantissa = lhs / rhs.mantissa; res.exponent = -rhs.exponent; res.normalize(); return res;
+	}
+	int operator >=(double const &r){ // important restriction: it is assumed here that both values of mantissa are not negative
+		if(r == 0) return (mantissa >= 0);
+		else{
+			ExExFloat R; R = r;
+			if(exponent > R.exponent ) return 1;
+			else if((exponent == R.exponent)&&(mantissa >= R.mantissa)) return 1;
+			else return 0;
+		}
+	}
+	int operator >=(ExExFloat const &r){ // important restriction: it is assumed here that both values of mantissa are not negative
+		if(r.mantissa == 0) return (mantissa >= 0);
+		else{
+			if(exponent > r.exponent ) return 1;
+			else if((exponent == r.exponent)&&(mantissa >= r.mantissa)) return 1;
+			else return 0;
+		}
+	}
+	double get_double(){ return ldexp(mantissa,exponent);}
+	int sgn(){ return (mantissa > 0.0) - (mantissa < 0.0);}
+	ExExFloat abs(){ExExFloat res; res.mantissa = fabs(mantissa); res.exponent = exponent; return res;}
+	ExExFloat SqRt(){ ExExFloat res;
+		if(exponent%2 == 0){ res.mantissa = sqrt(mantissa); res.exponent = exponent/2;} 
+		else{ res.mantissa = sqrt(2*mantissa); res.exponent = (exponent-1)/2;}
+		res.normalize(); return res;
+	}
 };
 
-/**
- * Efficient calculator for divided differences of the exponential function.
- * Used for computing QMC configuration weights.
- */
-class DivDiff {
+void divdiff_init(){
+	invPowersOf2 = new double[maxexp];
+	double curr=1; for(int i=0;i<maxexp;i++){ invPowersOf2[i] = curr; curr/=2; }
+}
+
+void divdiff_clear_up(){ delete[] invPowersOf2; }
+
+class divdiff{
+
+protected:
+
+double *z2;
+ExExFloat *h, *ddd;
+int s, maxlen = 10001, smax = 500; 
+double mu; ExExFloat expmu;
+
+double mean(double* z, int n){
+	double sum=0; int i;
+	for(i=0;i<n;i++) sum+=z[i];
+	return sum/n;
+}
+
+double maxAbsDiff(double* z, int len){
+	double zmax = z[0], zmin = z[0]; int i;
+	for(i=1;i<len;i++) { zmin = min(zmin,z[i]); zmax = max(zmax,z[i]);}
+	return fabs(zmax-zmin);
+}
+
 public:
-    // Configuration builder
-    class Builder {
-    public:
-        Builder& max_length(int n);
-        Builder& max_scaling_factor(int s);
 
-        [[nodiscard]] DivDiff build() const;
-        [[nodiscard]] std::unique_ptr<DivDiff> build_unique() const noexcept;
+double *z;
+ExExFloat *divdiffs;
+int CurrentLength;
 
-    private:
-        int max_len_ = 10'001;
-        int max_scaling_ = 500;
-    };
+long long int getsize(){
+	long long int sum=0;
+	sum += sizeof(double)*maxlen;
+	sum += 2*sizeof(ExExFloat)*(maxlen+extralen+1);
+	sum += sizeof(ExExFloat)*maxlen*smax;
+	sum += 2*sizeof(double*)+3*sizeof(ExExFloat*)+4*sizeof(int)+sizeof(double)+sizeof(ExExFloat);
+	return sum;
+}
 
-    // Constructors
-    explicit DivDiff(int max_length, int max_scaling_factor = 500);
-    DivDiff(const DivDiff&) = delete;
-    DivDiff(DivDiff&&) noexcept = default;
-    DivDiff& operator=(const DivDiff&) = delete;
-    DivDiff& operator=(DivDiff&&) noexcept = default;
-    ~DivDiff() = default;
+divdiff(int maxlen_, int smax_){ // constructor
+	maxlen = maxlen_; smax = smax_; AllocateMem();
+	if(invPowersOf2==NULL){
+		printf("Error: invPowersOf2 has not been initialized\n");
+		exit(EXIT_FAILURE);
+	}
+}
 
-    // Core interface methods
-    void add_element(double energy);
-    void remove_element();
-    bool remove_value(double value);  // Remove specific value from middle
+divdiff(const divdiff& other){ // copy constructor
+	maxlen=other.maxlen; smax=other.smax; AllocateMem();
+	CurrentLength=other.CurrentLength; s=other.s; mu=other.mu; expmu=other.expmu;
+	memcpy(z,other.z,maxlen*sizeof(double));
+	memcpy(h,other.h,(maxlen+extralen+1)*sizeof(ExExFloat));
+	memcpy(divdiffs,other.divdiffs,(maxlen+extralen+1)*sizeof(ExExFloat));
+	memcpy(ddd,other.ddd,maxlen*smax*sizeof(ExExFloat));
+}
 
-    // Accessors
-    [[nodiscard]] const std::vector<ExExFloat>& divdiffs() const noexcept;
-    [[nodiscard]] const std::vector<double>& energies() const noexcept;
-    [[nodiscard]] int current_length() const noexcept;
-    [[nodiscard]] int scaling_factor() const noexcept;
+divdiff& operator=(const divdiff& other){ // copy assignment operator
+	FreeMem();
+	maxlen=other.maxlen; smax=other.smax; AllocateMem();
+	CurrentLength=other.CurrentLength; s=other.s; mu=other.mu; expmu=other.expmu;
+	memcpy(z,other.z,maxlen*sizeof(double));
+	memcpy(h,other.h,(maxlen+extralen+1)*sizeof(ExExFloat));
+	memcpy(divdiffs,other.divdiffs,(maxlen+extralen+1)*sizeof(ExExFloat));
+	memcpy(ddd,other.ddd,maxlen*smax*sizeof(ExExFloat));
+	return *this;
+}
 
-    // Utility
-    [[nodiscard]] size_t memory_usage() const noexcept;
-    void print_state(std::ostream& os = std::cout) const;
+~divdiff(){ // destructor
+	FreeMem();
+}
 
-private:
-    // Data members
-    int max_length_;
-    int max_scaling_;
-    int current_length_{0};
-    int scaling_factor_{1};
-    double mean_energy_{0.0};
+void AllocateMem(){
+	z = new double[maxlen]; h = new ExExFloat[maxlen+extralen+1];
+	divdiffs = new ExExFloat[maxlen+extralen+1]; ddd = new ExExFloat[maxlen*smax];
+	CurrentLength = 0; s = 1;
+}
 
-    std::vector<double> energies_;
-    std::vector<ExExFloat> h_matrix_;
-    std::vector<ExExFloat> divdiffs_;
-    std::vector<ExExFloat> ddd_matrix_;  // Flattened 2D matrix
+void FreeMem(){
+	delete[] z; delete[] h; delete[] divdiffs; delete[] ddd;
+}
 
-    // Helper methods
-    void initialize_single_point();
-    void add_all_elements(int len);
-    [[nodiscard]] bool needs_scaling_change() const noexcept;
-    void compute_new_element();
-    void update_matrices();
+void PrintList(ExExFloat* list, int len, const char* namelist){
+	int i;
+	printf("%s={",namelist);
+	for(i=0;i<len;i++){
+		list[i].print();
+		if(i<len-1) printf(",");
+	}
+	printf("};\n");
+}
 
-    // Memory management
-    void allocate_memory();
-    void free_memory() noexcept;
-    void resize_if_needed();
+void PrintList(double* list, int len, const char* namelist){
+	int i;
+	printf("%s={",namelist);
+	for(i=0;i<len;i++){
+		printf("%.17g",list[i]);
+		if(i<len-1) printf(",");
+	}
+	printf("};\n");
+}
+
+void PrintList(int* list, int len, const char* namelist){
+	int i;
+	printf("%s={",namelist);
+	for(i=0;i<len;i++){
+		printf("%d",list[i]);
+		if(i<len-1) printf(",");
+	}
+	printf("};\n");
+}
+
+void PrintList(std::vector<int> list, const char* namelist){
+	int i; int len = list.size();
+	printf("%s={",namelist);
+	for(i=0;i<len;i++){
+		printf("%d",list[i]);
+		if(i<len-1) printf(",");
+	}
+	printf("};\n");
+}
+
+void Backupz(int len){ z2 = new double[len]; memcpy(z2,z,len*sizeof(double));}
+void Restorez(int len){ memcpy(z,z2,len*sizeof(double)); delete[] z2;}
+
+int s_changed(){
+	return fabs(z[CurrentLength-1]-mu)/3.5 > s;
+}
+
+void AddElement(double znew, int force_s = 0, double force_mu = 0){
+	int j,k,n,N; ExExFloat curr; n = CurrentLength; N = maxlen+extralen; z[n] = znew; CurrentLength++;
+	if(CurrentLength==1){
+		s = (force_s == 0) ? 1 : force_s;
+		mu = (force_mu == 0) ? z[0] : force_mu;
+		expmu.init_expmu(mu);
+		h[0] = 1; for(k=1;k<=N;k++) h[k] = h[k-1]/s;
+		if(mu != z[0]) for(k=N;k>0;k--) h[k-1] += h[k]*(z[0]-mu)/k;
+		curr = expmu*h[0]; for(k=0;k<s-1;k++) { ddd[k*maxlen] = curr; curr*=h[0];}
+		divdiffs[0].init_expmu(z[0]); // alternatively: divdiffs[0] = curr;
+	} else if(s_changed()||(CurrentLength>=maxlen)) AddAll(CurrentLength, force_s);
+	else{
+		for(k=N;k>n;k--) h[k-1] += h[k]*(z[n]-mu)/k; curr = expmu*h[n];
+		for(k=n;k>=1;k--) h[k-1] = (h[k-1]*n + h[k]*(z[n]-z[n-k]))/(n-k+1);
+		for(k=0;k<s-1;k++){
+			ddd[k*maxlen+n] = curr;
+			curr = ddd[k*maxlen]*h[n]; for(j=1;j<=n;j++) curr += ddd[k*maxlen+j]*h[n-j];
+		}
+		divdiffs[n] = curr;
+	}
+}
+
+void RemoveElement(){ 
+	int k,n,N;
+	if(CurrentLength>=1){ 
+		n = CurrentLength - 1; N = maxlen+extralen;
+		for(k=1;k<=n;k++) h[k-1] = (h[k-1]*(n-k+1) - h[k]*(z[n]-z[n-k]))/n;
+		for(k=n+1;k<=N;k++) h[k-1] -= h[k]*(z[n]-mu)/k;
+		CurrentLength--;
+	}
+}
+
+int RemoveValue(double value, int force_s = 0, double force_mu = 0){ // remove from bulk
+	int j,k,n = CurrentLength - 1,found = 0;
+	for(k=n;k>=0;k--) if(z[k] == value){
+		for(j=n;j>=k;j--) RemoveElement();
+		for(j=k;j<n;j++) AddElement(z[j+1],force_s,force_mu);
+		found = 1; break;
+	}
+	return found;
+}
+
+void AddAll(int len, int force_s = 0){ // input is taken from z, output is written to divdiffs, size of z should be not smaller than len
+	int i,s; CurrentLength = 0;
+	if(force_s == 0) s = (int)ceil(maxAbsDiff(z,len)/3.5); else s = force_s;
+	if((s > smax)||(len >= maxlen)){
+		i = maxlen; Backupz(i); FreeMem();
+		if(s > smax) smax = max(smax*2,s);
+		if(len >= maxlen) maxlen = max(maxlen*2,len);
+		AllocateMem(); Restorez(i);
+	}
+	AddElement(z[0],s,mean(z,len));
+	for(i=1;i<len;i++) AddElement(z[i]); // calculates the vector (d[z_0], 1! d[z_0,z_1], ..., n! d[z_0,z_1,...,z_n]).
+}
 };
 
-// Global functions
+// Modern alias for legacy class
+using DivDiff = divdiff;
+
 void divdiff_init();
 void divdiff_cleanup() noexcept;
 
-} // namespace pmrqmc

@@ -32,9 +32,16 @@ void OpSum::add(double coefficient, const std::vector<std::pair<std::string, int
             final_coeff *= 0.5;  // S = σ/2
         }
     }
-    
+
+    // Apply Pauli coefficient for phase (e.g., Y contributing i)
+    std::complex<double> phase_coeff(1.0, 0.0);
+    for (const auto& [pauli, qubit] : converted_ops) {
+        if (pauli == "Y") {
+            phase_coeff *= std::complex<double>(0.0, 1.0);
+        }
+    }
     // Add the term with converted operators and final coefficient
-    terms.push_back({final_coeff, converted_ops});
+    terms.push_back({final_coeff * phase_coeff, converted_ops});
 }
 
 void OpSum::add(double coefficient, std::initializer_list<std::pair<std::string, int>> pauli_ops) {
@@ -68,9 +75,16 @@ void OpSum::add(std::complex<double> coefficient, const std::vector<std::pair<st
             final_coeff *= 0.5;  // S = σ/2
         }
     }
-    
+
+    // Apply Pauli coefficient for phase (e.g., Y contributing i)
+    std::complex<double> phase_coeff(1.0, 0.0);
+    for (const auto& [pauli, qubit] : converted_ops) {
+        if (pauli == "Y") {
+            phase_coeff *= std::complex<double>(0.0, 1.0);
+        }
+    }
     // Add the term with converted operators and final coefficient
-    terms.push_back({final_coeff, converted_ops});
+    terms.push_back({final_coeff * phase_coeff, converted_ops});
 }
 
 void OpSum::add(std::complex<double> coefficient, std::initializer_list<std::pair<std::string, int>> pauli_ops) {

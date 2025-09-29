@@ -24,6 +24,11 @@ set(HEADERS
 # Example executables
 add_executable(pmrqmc examples/main.cpp ${SOURCES})
 
+# Test executables
+add_executable(test_opsum tests/test_opsum.cpp tests/test_framework.hpp ${SOURCES})
+add_executable(test_pmr tests/test_pmr.cpp tests/test_framework.hpp ${SOURCES})
+add_executable(test_divdiff tests/test_divdiff.cpp tests/test_framework.hpp ${SOURCES})
+
 # Main library (if needed)
 add_library(pmrqmc_lib STATIC ${SOURCES} ${HEADERS})
 target_include_directories(pmrqmc_lib PUBLIC include)
