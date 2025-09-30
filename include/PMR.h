@@ -118,7 +118,6 @@ PMR pmr(const OpSum& hamiltonian);
 
 // Observable PMR functions
 PMR pmr_obs(const OpSum& observable, const PMR& hamiltonian_pmr);
-PMR pmr_obs(const OpSumBulk& observables, const PMR& hamiltonian_pmr);
 
 // Helper functions
 std::vector<bool> int_to_bitset(int value, int size);

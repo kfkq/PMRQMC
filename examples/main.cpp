@@ -2,6 +2,7 @@
 #include <PMR.h>
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 
 using namespace pmrqmc;
 
@@ -114,7 +115,7 @@ void print_observable_data(const ObservablePMR& obs_data) {
 
 
 int main() {
-    // Example 1: Heisenberg model on 4 qubits
+    // Heisenberg model on 6 qubits
     std::cout << "=== Example : Heisenberg Model ===" << std::endl;
     
     OpSum hamiltonian("heisenberg");
@@ -142,8 +143,8 @@ int main() {
     auto ham_pmr = pmr(hamiltonian);
     print_pmr_result(ham_pmr);
 
-    // Example 1: Single Observable - Magnetization
-    std::cout << "\n\n=== Observable 1: Single Observable - Magnetization ===" << std::endl;
+    // Observable 1: Simple Observable - Total Magnetization
+    std::cout << "\n\n=== Observable 1: Simple Observable - Total Magnetization ===" << std::endl;
     
     OpSum mag("magnetization");
     for (int i = 0; i < N_QUBITS; ++i) {
@@ -161,33 +162,39 @@ int main() {
         print_observable_data(mag_pmr.get_observable_data());
     }
 
-    // Example 2: Spin-Spin Correlation Functions using OpSumBulk
-    std::cout << "\n\n=== Example 2: Spin-Spin Correlation Functions ===" << std::endl;
-    
-    // Create bulk observables for correlation functions O_r = 1/N \sum_{r = r_i-r_j} Z_i Z_j
-    OpSumBulk szsz_corr("spinz_correlation");
-    
-    // Generate correlation observables for different distances r
-    const int max_distance = N_QUBITS / 2;  // Maximum distance to consider
-    
-    for (int r = 1; r <= max_distance; ++r) {
-        OpSum szsz_r("corr_r_" + std::to_string(r));
-        
-        // Sum over all pairs of sites with distance r (considering periodic boundary)
-        for (int i = 0; i < N_QUBITS; ++i) {
-            int j = (i + r) % N_QUBITS;  // Periodic boundary conditions
-            szsz_r.add(1.0 / N_QUBITS, "Z", i, "Z", j);
-        }// For now, we'll add normalization in the PMR processing
-        
-        szsz_corr.add(szsz_r);
-    }
-    
-    // Generate PMR for all correlation observables
-    auto correlations_pmr = pmr_obs(szsz_corr, ham_pmr);
-    
-    if (correlations_pmr.has_observable_data()) {
-        print_observable_data(correlations_pmr.get_observable_data());
+    // Observable 2: Momentum Observable - Magnetic Structure Factor at q=π
+    std::cout << "\n\n=== Observable 2: Momentum Observable - <|S^z(π)|²> ===" << std::endl;
+
+    OpSum mom_obs("momentum_q_pi"); // S_z(π) S_z(-π), but since q=π ≡ -π mod 2π, it's |S^z(π)|²
+
+    // S^z(q) = (1/√N) ∑_j e^{-i q r_j} S^z_j
+    // For q = π, r_j = j (1D chain, unit spacing), e^{-i π j} = (-1)^j (real)
+    // Thus <|S^z(π)|²> = <S^z(π) S^z(-π)> = (1/N) ∑_{j,k} e^{-i π (j - k)} <S^z_j S^z_k> = (1/N) ∑_{j,k} (-1)^{j-k} <S^z_j S^z_k>
+    // Note: (-1)^{j-k} = (-1)^{j+k} (since (-1)^{-k} = (-1)^k), so phase based on j+k parity is equivalent
+    const double norm_factor = 1.0 / static_cast<double>(N_QUBITS);
+
+    // Naive O(N²) construction: Fine for small N_QUBITS; for large N, consider measuring single-body Fourier first, then squaring
+    for (int j = 0; j < N_QUBITS; ++j) {
+        for (int k = 0; k < N_QUBITS; ++k) {
+            // Phase from (-1)^{j+k} ≡ (-1)^{j-k}
+            int phase_parity = (j + k) % 2;  // 0: even (sign +1), 1: odd (sign -1)
+            double sign = (phase_parity == 0) ? 1.0 : -1.0;
+            double coeff = norm_factor * sign;
+            // If S^z = Z/2, multiply coeff by 1/4 here; otherwise, assuming Z represents S^z directly
+            mom_obs.add(coeff, "Z", j, "Z", k);
+        }
     }
 
+    std::cout << "Momentum observable S_z(π)S_z:" << std::endl;
+    mom_obs.print();
+    std::cout << std::endl;
+
+    // Generate PMR for momentum observable
+    auto mom_pmr = pmr_obs(mom_obs, ham_pmr);
+
+    if (mom_pmr.has_observable_data()) {
+        print_observable_data(mom_pmr.get_observable_data());
+    }
+    
     return 0;
 }

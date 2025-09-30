@@ -125,33 +125,6 @@ bool test_pmr_observable_single() {
     return true;
 }
 
-bool test_pmr_observable_bulk() {
-    OpSum hamiltonian("test");
-    hamiltonian.add(1.0, "X", 0);
-    hamiltonian.add(1.0, "Z", 0);
-
-    OpSumBulk observables("bulk_test");
-    OpSum obs1("obs1");
-    obs1.add(1.0, "Z", 0);
-    OpSum obs2("obs2");
-    obs2.add(1.0, "Z", 1);
-
-    observables.add(obs1);
-    observables.add(obs2);
-
-    auto ham_pmr = pmr(hamiltonian);
-    auto obs_pmr = pmr_obs(observables, ham_pmr);
-
-    TEST_ASSERT(obs_pmr.has_observable_data(), "Result should have observable data");
-    auto& obs_data = obs_pmr.get_observable_data();
-    TEST_ASSERT_EQ(obs_data.get_num_observables(), 2, "Should have 2 observables");
-
-    for (int i = 0; i < 2; ++i) {
-        TEST_ASSERT(obs_data.has_diagonal_terms(i), std::string("Observable ") + std::to_string(i) + " should have diagonal terms");
-    }
-
-    return true;
-}
 
 bool test_pmr_error_handling() {
     // Test with empty Hamiltonian
@@ -187,7 +160,6 @@ int main() {
     suite.add_test("PMR Permutation Matrices", test_pmr_permutation_matrices);
     suite.add_test("PMR Cycles", test_pmr_cycles);
     suite.add_test("PMR Observable Single", test_pmr_observable_single);
-    suite.add_test("PMR Observable Bulk", test_pmr_observable_bulk);
     suite.add_test("PMR Error Handling", test_pmr_error_handling);
 
     return suite.run_all() ? 0 : 1;
